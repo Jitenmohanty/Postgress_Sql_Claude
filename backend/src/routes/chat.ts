@@ -72,7 +72,9 @@ chatRouter.post('/rooms',
         });
       }
 
-      const { name, description, type = 'public' } = req.body;
+      const { name, description, type = 'public',maxParticipants } = req.body;
+
+      const participantsLimit = maxParticipants ?? 50;  // use 50 if undefined/null
 
       // Create room
       const [newRoom] = await db.insert(chatRooms)
@@ -82,7 +84,7 @@ chatRouter.post('/rooms',
           type,
           createdBy: req.user!.id,
           isActive: true,
-          maxParticipants: 100,
+          maxParticipants: participantsLimit,
           settings: {},
         })
         .returning();

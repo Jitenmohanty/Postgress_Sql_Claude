@@ -4,11 +4,13 @@ import { body, query, validationResult } from 'express-validator';
 import { eq, like, desc, and, ne } from 'drizzle-orm';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { authenticateToken, createRateLimiter } from '../middleware/auth';
 import { ApiResponse } from '../types';
 import db from '../database';
 import { users } from '../database/schema';
 import { AuthService } from '../middleware/auth';
+
 
 const router = Router();
 
@@ -16,13 +18,16 @@ const router = Router();
 const userRateLimit = createRateLimiter(15 * 60 * 1000, 50); // 50 requests per 15 minutes
 
 // File upload configuration
+const avatarDir = path.join(__dirname, '..', '..', 'uploads', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/avatars');
+    cb(null, avatarDir);  // now guaranteed to exist
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `avatar-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
@@ -37,6 +42,8 @@ const upload = multer({
     }
   }
 });
+
+export { upload };
 
 // Get user profile
 router.get('/profile{/:id}', userRateLimit, async (req: Request, res: Response<ApiResponse<{ user: any }>>) => {

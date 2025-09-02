@@ -29,7 +29,7 @@ export class AIService {
     }
     
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
   }
 
   // Create a new conversation
@@ -39,7 +39,7 @@ export class AIService {
         .values({
           userId,
           title: title || 'New Conversation',
-          model: 'gemini-pro',
+          model: 'gemini-2.0-flash',
           totalTokens: 0,
           messageCount: 0,
           isActive: true,
@@ -177,7 +177,7 @@ export class AIService {
           content: responseText,
           tokens: responseTokens,
           metadata: {
-            model: 'gemini-pro',
+            model: 'gemini-2.0-flash',
             promptTokens: userTokens,
             completionTokens: responseTokens,
             totalTokens,

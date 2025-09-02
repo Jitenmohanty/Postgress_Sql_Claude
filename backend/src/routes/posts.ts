@@ -186,9 +186,6 @@ postRouter.get(
         .where(eq(posts.slug, slug))
         .limit(1);
 
-      console.log("Looking for slug:", slug);
-      const exists = await db.select().from(posts).where(eq(posts.slug, slug));
-      console.log("Posts with slug in DB:", exists);
 
       if (!postRow) {
         return res.status(404).json({

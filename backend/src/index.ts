@@ -12,6 +12,7 @@ import session from 'express-session';
 import { RedisStore } from 'connect-redis';  // ✅ Use NAMED IMPORT instead
 import passport from './config/passport';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
 
 // Import database and Redis
 import { testConnection as testDatabaseConnection } from './database';
@@ -69,6 +70,9 @@ class Server {
     // Body parsing middleware
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    this.app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 
     // Compression middleware
     this.app.use(compression());
