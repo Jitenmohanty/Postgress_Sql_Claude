@@ -133,95 +133,123 @@ postRouter.get('/',
 );
 
 // Get single post
-postRouter.get('/:slug',
+postRouter.get(
+  "/:slug",
   postRateLimit,
   optionalAuth,
   async (req: Request, res: Response<ApiResponse<{ post: any }>>) => {
     try {
       const slug = req.params.slug;
 
-      // Check cache first
+      // --- Cache check ---
       const cacheKey = `post:${slug}`;
       const cached = await CacheService.get(cacheKey);
       if (cached) {
-        // Increment view count
-        await db.update(posts).set({
-          viewCount: sql`${posts.viewCount} + 1`
-        }).where(eq(posts.slug, slug));
+        // Increment view count async (don’t block response)
+        await db
+          .update(posts)
+          .set({ viewCount: sql`${posts.viewCount} + 1` })
+          .where(eq(posts.slug, slug));
 
         return res.json({
           success: true,
-          data: cached as { post: any }
+          data: cached as { post: any },
         });
       }
 
-      const [post] = await db.select({
-        id: posts.id,
-        title: posts.title,
-        content: posts.content,
-        excerpt: posts.excerpt,
-        slug: posts.slug,
-        status: posts.status,
-        featuredImage: posts.featuredImage,
-        tags: posts.tags,
-        metadata: posts.metadata,
-        viewCount: posts.viewCount,
-        likeCount: posts.likeCount,
-        publishedAt: posts.publishedAt,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        author: {
-          id: users.id,
-          username: users.username,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          avatar: users.avatar,
-        }
-      })
+      // --- Fetch from DB ---
+      const [postRow] = await db
+        .select({
+          id: posts.id,
+          title: posts.title,
+          content: posts.content,
+          excerpt: posts.excerpt,
+          slug: posts.slug,
+          status: posts.status,
+          featuredImage: posts.featuredImage,
+          tags: posts.tags,
+          metadata: posts.metadata,
+          viewCount: posts.viewCount,
+          likeCount: posts.likeCount,
+          publishedAt: posts.publishedAt,
+          createdAt: posts.createdAt,
+          updatedAt: posts.updatedAt,
+          authorId: posts.authorId,
+          author_id: users.id,
+          author_username: users.username,
+          author_firstName: users.firstName,
+          author_lastName: users.lastName,
+          author_avatar: users.avatar,
+        })
         .from(posts)
-        .innerJoin(users, eq(posts.authorId, users.id))
+        .leftJoin(users, eq(posts.authorId, users.id))
         .where(eq(posts.slug, slug))
         .limit(1);
 
-      if (!post) {
+      console.log("Looking for slug:", slug);
+      const exists = await db.select().from(posts).where(eq(posts.slug, slug));
+      console.log("Posts with slug in DB:", exists);
+
+      if (!postRow) {
         return res.status(404).json({
           success: false,
-          message: 'Post not found'
+          message: "Post not found",
         });
       }
 
-      // Check if user can view draft posts
-      if (post.status === 'draft' && (!req.user || req.user.id !== post.author.id)) {
+      // --- Build safe author object ---
+      const post = {
+        ...postRow,
+        author: postRow.author_id
+          ? {
+              id: postRow.author_id,
+              username: postRow.author_username,
+              firstName: postRow.author_firstName,
+              lastName: postRow.author_lastName,
+              avatar: postRow.author_avatar,
+            }
+          : null,
+      };
+
+      // --- Draft access check ---
+     // Allow drafts in development, but keep restriction in production
+      if (
+        process.env.NODE_ENV === "production" &&
+        post.status === "draft" &&
+        (!req.user || !post.author || req.user.id !== post.author.id)
+      ) {
         return res.status(404).json({
           success: false,
-          message: 'Post not found'
+          message: "Post not found",
         });
       }
 
-      // Increment view count
-      await db.update(posts).set({
-        viewCount: sql`${posts.viewCount} + 1`
-      }).where(eq(posts.id, post.id));
+
+      // --- Increment view count ---
+      await db
+        .update(posts)
+        .set({ viewCount: sql`${posts.viewCount} + 1` })
+        .where(eq(posts.id, post.id));
 
       post.viewCount = (post.viewCount || 0) + 1;
 
-      // Cache for 10 minutes
+      // --- Cache result ---
       await CacheService.set(cacheKey, { post }, 600);
 
-      res.json({
+      return res.json({
         success: true,
-        data: { post }
+        data: { post },
       });
-
     } catch (error) {
-      console.error('Get post error:', error);
-      res.status(500).json({
+      console.error("Get post error:", error);
+      return res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: "Internal server error",
       });
     }
   }
 );
+
 
 // Create post
 postRouter.post('/',

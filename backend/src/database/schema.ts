@@ -223,6 +223,7 @@ export const userRelations = relations(users, ({ many }) => ({
   chatMessages: many(chatMessages),
   roomParticipants: many(roomParticipants),
   aiConversations: many(aiConversations),
+  createdRooms: many(chatRooms), // Add this for created rooms
 }));
 
 export const postRelations = relations(posts, ({ one, many }) => ({
@@ -233,8 +234,20 @@ export const postRelations = relations(posts, ({ one, many }) => ({
 export const commentRelations = relations(comments, ({ one, many }) => ({
   author: one(users, { fields: [comments.authorId], references: [users.id] }),
   post: one(posts, { fields: [comments.postId], references: [posts.id] }),
-  parent: one(comments, { fields: [comments.parentId], references: [comments.id] }),
-  replies: many(comments),
+  parent: one(comments, { 
+    fields: [comments.parentId], 
+    references: [comments.id], 
+    relationName: 'commentParent' 
+  }),
+  replies: many(comments, { 
+    relationName: 'commentReplies' 
+  }),
+}));
+
+
+
+export const oauthProviderRelations = relations(oauthProviders, ({ one }) => ({
+  user: one(users, { fields: [oauthProviders.userId], references: [users.id] }),
 }));
 
 export const chatRoomRelations = relations(chatRooms, ({ one, many }) => ({
@@ -247,6 +260,12 @@ export const chatMessageRelations = relations(chatMessages, ({ one }) => ({
   sender: one(users, { fields: [chatMessages.senderId], references: [users.id] }),
   room: one(chatRooms, { fields: [chatMessages.roomId], references: [chatRooms.id] }),
   replyTo: one(chatMessages, { fields: [chatMessages.replyToId], references: [chatMessages.id] }),
+}));
+
+// ✅ ADD THIS MISSING RELATION
+export const roomParticipantRelations = relations(roomParticipants, ({ one }) => ({
+  user: one(users, { fields: [roomParticipants.userId], references: [users.id] }),
+  room: one(chatRooms, { fields: [roomParticipants.roomId], references: [chatRooms.id] }),
 }));
 
 export const aiConversationRelations = relations(aiConversations, ({ one, many }) => ({
