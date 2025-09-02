@@ -6,7 +6,18 @@ import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import { eq, and } from 'drizzle-orm';
 import db from '../database';
 import { users, oauthProviders } from '../database/schema';
-import { JWTPayload } from '../types'; // Import from centralized types instead
+
+// Define a consistent User type that matches your declaration
+interface AuthUser {
+  id: number;
+  email: string;
+  username: string;
+  role: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatar?: string | null;
+  isActive: boolean;
+}
 
 // JWT Strategy
 passport.use(
@@ -15,7 +26,7 @@ passport.use(
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_SECRET!,
     },
-    async (payload: JWTPayload, done) => {
+    async (payload: any, done) => {
       try {
         const user = await db.select()
           .from(users)
@@ -23,16 +34,17 @@ passport.use(
           .limit(1);
 
         if (user.length) {
-          return done(null, {
+          const authUser: AuthUser = {
             id: user[0].id,
             email: user[0].email,
             username: user[0].username,
-            role: user[0].role || 'user', // Fixed: Handle nullable role
+            role: user[0].role || 'user',
             firstName: user[0].firstName,
             lastName: user[0].lastName,
             avatar: user[0].avatar,
             isActive: user[0].isActive || true,
-          });
+          };
+          return done(null, authUser);
         }
         return done(null, false);
       } catch (error) {
@@ -75,18 +87,19 @@ passport.use(
             })
             .where(eq(oauthProviders.id, existingProvider[0].oauth_providers.id));
 
-          // Return user with proper type conversion
+          // Return user with AuthUser type
           const dbUser = existingProvider[0].users;
-          return done(null, {
+          const authUser: AuthUser = {
             id: dbUser.id,
             email: dbUser.email,
             username: dbUser.username,
-            role: dbUser.role || 'user', // Fixed: Handle nullable role
+            role: dbUser.role || 'user',
             firstName: dbUser.firstName,
             lastName: dbUser.lastName,
             avatar: dbUser.avatar,
             isActive: dbUser.isActive || true,
-          });
+          };
+          return done(null, authUser);
         }
 
         // Check if user exists with same email
@@ -113,7 +126,7 @@ passport.use(
               avatar: profile.photos?.[0]?.value,
               isEmailVerified: true,
               isActive: true,
-              role: 'user', // Set default role explicitly
+              role: 'user',
             })
             .returning();
           user = newUser;
@@ -133,17 +146,18 @@ passport.use(
             tokenExpires: refreshToken ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null,
           });
 
-        // Return user with proper type conversion
-        return done(null, {
+        // Return user with AuthUser type
+        const authUser: AuthUser = {
           id: user.id,
           email: user.email,
           username: user.username,
-          role: user.role || 'user', // Fixed: Handle nullable role
+          role: user.role || 'user',
           firstName: user.firstName,
           lastName: user.lastName,
           avatar: user.avatar,
           isActive: user.isActive || true,
-        });
+        };
+        return done(null, authUser);
       } catch (error) {
         console.error('Google OAuth error:', error);
         return done(error as Error, undefined);
@@ -208,18 +222,19 @@ passport.use(
             })
             .where(eq(oauthProviders.id, existingProvider[0].oauth_providers.id));
 
-          // Return user with proper type conversion
+          // Return user with AuthUser type
           const dbUser = existingProvider[0].users;
-          return done(null, {
+          const authUser: AuthUser = {
             id: dbUser.id,
             email: dbUser.email,
             username: dbUser.username,
-            role: dbUser.role || 'user', // Fixed: Handle nullable role
+            role: dbUser.role || 'user',
             firstName: dbUser.firstName,
             lastName: dbUser.lastName,
             avatar: dbUser.avatar,
             isActive: dbUser.isActive || true,
-          });
+          };
+          return done(null, authUser);
         }
 
         // Check if user exists with same email
@@ -246,7 +261,7 @@ passport.use(
               avatar: profile.photos?.[0]?.value,
               isEmailVerified: true,
               isActive: true,
-              role: 'user', // Set default role explicitly
+              role: 'user',
             })
             .returning();
           user = newUser;
@@ -266,17 +281,18 @@ passport.use(
             tokenExpires: refreshToken ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) : null,
           });
 
-        // Return user with proper type conversion
-        return done(null, {
+        // Return user with AuthUser type
+        const authUser: AuthUser = {
           id: user.id,
           email: user.email,
           username: user.username,
-          role: user.role || 'user', // Fixed: Handle nullable role
+          role: user.role || 'user',
           firstName: user.firstName,
           lastName: user.lastName,
           avatar: user.avatar,
           isActive: user.isActive || true,
-        });
+        };
+        return done(null, authUser);
       } catch (error) {
         console.error('GitHub OAuth error:', error);
         return done(error as Error, undefined);
@@ -287,7 +303,7 @@ passport.use(
 
 // Serialize/deserialize user for session
 passport.serializeUser((user: any, done) => {
-  done(null, user.id);
+  done(null, (user as AuthUser).id);
 });
 
 passport.deserializeUser(async (id: number, done) => {
@@ -298,16 +314,17 @@ passport.deserializeUser(async (id: number, done) => {
       .limit(1);
 
     if (user.length) {
-      done(null, {
+      const authUser: AuthUser = {
         id: user[0].id,
         email: user[0].email,
         username: user[0].username,
-        role: user[0].role || 'user', // Fixed: Handle nullable role
+        role: user[0].role || 'user',
         firstName: user[0].firstName,
         lastName: user[0].lastName,
         avatar: user[0].avatar,
         isActive: user[0].isActive || true,
-      });
+      };
+      done(null, authUser);
     } else {
       done(null, false);
     }

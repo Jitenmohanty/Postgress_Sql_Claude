@@ -1,5 +1,6 @@
 // src/routes/auth.ts
-import { Router, Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { Router } from 'express';
 import { body, validationResult } from 'express-validator';
 import { eq, and } from 'drizzle-orm';
 import passport from '../config/passport';
@@ -311,36 +312,28 @@ router.post('/refresh', generalRateLimit, async (req: Request, res: Response) =>
   }
 });
 
+// Add this helper function at the top after imports
+function getAuthenticatedUser(req: Request): Express.User {
+  if (!req.user) {
+    throw new Error('User not authenticated');
+  }
+  return req.user;
+}
+
 // Logout endpoint
 router.post('/logout', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (token && req.user) {
-      // Blacklist the current token
-      await AuthService.blacklistToken(token);
-
-      // Clear refresh token from database
-      await db.update(users)
-        .set({ refreshToken: null })
-        .where(eq(users.id, req.user.id));
-
-      // Clear cached session
-      await CacheService.deleteSession(`user:${req.user.id}`);
-    }
-
-    res.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
-
+    const user = getAuthenticatedUser(req); // This will have the correct type
+    
+    await db.update(users)
+      .set({ refreshToken: null })
+      .where(eq(users.id, user.id)); // Should work now
+      
+    await CacheService.deleteSession(`user:${user.id}`);
+    
+    res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(401).json({ success: false, message: 'Authentication required' });
   }
 });
 

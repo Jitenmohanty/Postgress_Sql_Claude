@@ -1,4 +1,7 @@
 // src/index.ts
+import { config } from 'dotenv';
+// Load environment variables
+config();
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
@@ -9,7 +12,6 @@ import session from 'express-session';
 import { RedisStore } from 'connect-redis';  // ✅ Use NAMED IMPORT instead
 import passport from './config/passport';
 import rateLimit from 'express-rate-limit';
-import { config } from 'dotenv';
 
 // Import database and Redis
 import { testConnection as testDatabaseConnection } from './database';
@@ -26,8 +28,7 @@ import postRoutes from './routes/posts';
 import chatRoutes from './routes/chat';
 import aiRoutes from './routes/ai';
 
-// Load environment variables
-config();
+
 
 class Server {
   private app: express.Application;
@@ -164,13 +165,13 @@ class Server {
     });
 
     // 404 handler for API routes
-    this.app.use('/api/*', (req, res) => {
-      res.status(404).json({
-        success: false,
-        message: 'API endpoint not found',
-        path: req.path,
+    this.app.use('/api/*path', (req, res) => {
+        res.status(404).json({
+          success: false,
+          message: 'API endpoint not found',
+          path: req.path,
+        });
       });
-    });
 
     // Root endpoint
     this.app.get('/', (req, res) => {
@@ -263,13 +264,13 @@ class Server {
     });
 
     // Handle 404 for non-API routes
-    this.app.use('*', (req, res) => {
-      res.status(404).json({
-        success: false,
-        message: 'Route not found',
-        path: req.path,
-      });
+  this.app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Route not found',
+      path: req.path,
     });
+  });
   }
 
   public async start(): Promise<void> {
@@ -319,7 +320,7 @@ class Server {
 
   private setupGracefulShutdown(): void {
     const shutdown = async (signal: string) => {
-      console.log(`\n📴 Received ${signal}. Starting graceful shutdown...`);
+      console.log(`\n Received ${signal}. Starting graceful shutdown...`);
 
       try {
         // Close HTTP server

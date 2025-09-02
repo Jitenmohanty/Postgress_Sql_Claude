@@ -39,7 +39,7 @@ const upload = multer({
 });
 
 // Get user profile
-router.get('/profile/:id?', userRateLimit, async (req: Request, res: Response<ApiResponse<{ user: any }>>) => {
+router.get('/profile{/:id}', userRateLimit, async (req: Request, res: Response<ApiResponse<{ user: any }>>) => {
   try {
     const userId = req.params.id ? parseInt(req.params.id) : req.user?.id;
     

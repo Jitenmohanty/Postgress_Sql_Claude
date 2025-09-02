@@ -1,4 +1,3 @@
-// tsconfig.json
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -35,7 +34,9 @@
     "sourceMap": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/types/**/*"
   ],
   "exclude": [
     "node_modules",
@@ -44,6 +45,7 @@
     "**/*.spec.ts"
   ],
   "ts-node": {
+    "files": true,
     "esm": false,
     "experimentalSpecifierResolution": "node"
   }
